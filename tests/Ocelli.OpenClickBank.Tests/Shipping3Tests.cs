@@ -85,6 +85,22 @@ public class Shipping3Tests : IClassFixture<SharedFixture>
 
     #endregion Read
 
+    #region Write
+
+    [SkippableTheory]
+    [InlineData("", "", "", "", "", "", false)]
+    public async Task CreateNewShippingNotice(string reciept, string dateStr, string carrier, string tracking, string comments, string item, bool fillOrder)
+    {
+        var date = DateOnly.ParseExact(dateStr, "yyyy-MM-dd");
+
+        var shippingNotice = await Fixture.ApiKey.ClickBankService.Shipping.CreateShipNoticeAsync(reciept, date, carrier, tracking, comments, item, fillOrder);
+        _additionalPropertiesHelper.CheckAdditionalProperties(shippingNotice, Fixture.ApiKey.OpenClickBankConfig.ClerkApiKey);
+
+        Assert.NotNull(shippingNotice);
+    }
+
+    #endregion
+
     [SkippableFact]
     public async Task BadRequestResponsesAsync() => await _badRequestMockClient.TestAllMethodsThatReturnDataAsync();
 
