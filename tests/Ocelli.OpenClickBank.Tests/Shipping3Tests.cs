@@ -90,7 +90,7 @@ public class Shipping3Tests : IClassFixture<SharedFixture>
     [SkippableFact]
     public async Task CreateNewShippingNotice()
     {
-        var date = DateOnly.ParseExact("2024-06-06", "yyyy-MM-dd");
+        var date = new DateOnly(year: 2024, month: 6, day: 6);
         var shippingNotice = await Fixture.ApiKey.ClickBankService.Shipping.CreateShipNoticeAsync(Fixture.Receipt, date, "usps", "TRACKING-NUMBER", "Test order has been test shipped", "", false);
         _additionalPropertiesHelper.CheckAdditionalProperties(shippingNotice, Fixture.ApiKey.OpenClickBankConfig.ClerkApiKey);
 
