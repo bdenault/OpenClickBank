@@ -10,16 +10,14 @@ internal class ClickbankDelegateHandler(IServiceProvider sp, ClickbankBuilder bu
 
         try
         {
-            if (request.Options.TryGetValue(new HttpRequestOptionsKey<string>("cb.url"), out var url))
+            var task = request.RequestUri?.AbsolutePath switch
             {
-                var task = url switch
-                {
-                    "orders2" when builder.ProcessOrderResponse is not null => builder.ProcessOrderResponse(sp, response, cancellationToken),
-                    _ => Task.CompletedTask,
-                };
+                "/orders2/list" when builder.ProcessOrderResponse is not null => builder.ProcessOrderResponse(sp, response, cancellationToken),
 
-                await task.ConfigureAwait(false);
-            }
+                _ => Task.CompletedTask,
+            };
+
+            await task.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
