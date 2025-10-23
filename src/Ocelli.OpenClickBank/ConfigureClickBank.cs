@@ -41,4 +41,26 @@ public static class ConfigureClickBank
 
         return services;
     }
+
+    public static IServiceCollection AddClickBankServices(this IServiceCollection services, Action<ClickbankBuilder>? configure = null)
+    {
+        services.AddClickBankServices();
+
+        var builder = new ClickbankBuilder();
+        configure?.Invoke(builder);
+        services.AddSingleton(builder);
+
+        return services;
+    }
+
+    public static IServiceCollection AddClickBankServices(this IServiceCollection services, OpenClickBankConfig config, Action<ClickbankBuilder>? configure = null)
+    {
+        services.AddClickBankServices(config);
+
+        var builder = new ClickbankBuilder();
+        configure?.Invoke(builder);
+        services.AddSingleton(builder);
+
+        return services;
+    }
 }

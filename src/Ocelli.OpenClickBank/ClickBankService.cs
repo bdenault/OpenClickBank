@@ -1,7 +1,7 @@
 ﻿namespace Ocelli.OpenClickBank;
 
 //TODO: Add a method to return a flag if a list has more records (206 response)
-internal class ClickBankService(HttpClient httpClient, OpenClickBankConfig config) : IClickBankService
+internal class ClickBankService(HttpClient httpClient) : IClickBankService
 {
     public IAnalyticsClient Analytics => new AnalyticsClient(httpClient);
     public IDebugClient Debugs => new DebugClient(httpClient);
@@ -31,6 +31,6 @@ internal class ClickBankServiceFactory(IHttpClientFactory httpClientFactory) : I
         // Set the authorization header using the Clerk API Key directly
         httpClient.DefaultRequestHeaders.TryAddWithoutValidation("authorization", config.ClerkApiKey);
 
-        return new ClickBankService(httpClient, config);
+        return new ClickBankService(httpClient);
     }
 }

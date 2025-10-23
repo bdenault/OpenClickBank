@@ -1,8 +1,22 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Ocelli.OpenClickBank;
 
 var serviceProvider = new ServiceCollection()
     .AddClickBankServices() // Register ClickBank Services
+    .BuildServiceProvider();
+
+var serviceProvider2 = new ServiceCollection()
+    .AddLogging()
+    .AddClickBankServices(builder =>
+    {
+        builder.ProcessOrderResponse = async (sp, res, ct) =>
+        {
+            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProcessOrderResponse");
+            var content = await res.Content.ReadAsStringAsync(ct);
+            logger.LogDebug("{Content}", content);
+        };
+    })
     .BuildServiceProvider();
 
 // Get the Factory
