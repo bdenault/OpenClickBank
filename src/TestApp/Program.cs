@@ -1,21 +1,15 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Ocelli.OpenClickBank;
 
 var serviceProvider = new ServiceCollection()
-    .AddClickBankServices() // Register ClickBank Services
-    .BuildServiceProvider();
-
-var serviceProvider2 = new ServiceCollection()
     .AddLogging()
-    .AddClickBankServices(builder =>
+    .AddClickBankServices(builder => // Register ClickBank Services
     {
-        builder.ProcessOrderResponse = async (sp, res, ct) =>
+        builder.OnResponse(HttpMethod.Get, "/rest/1.3/quickstats/accounts", async (sp, res, ct) =>
         {
-            var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProcessOrderResponse");
             var content = await res.Content.ReadAsStringAsync(ct);
-            logger.LogDebug("{Content}", content);
-        };
+            Console.WriteLine($"  Received response: {content}");
+        });
     })
     .BuildServiceProvider();
 
@@ -35,7 +29,7 @@ var clickBankService = factory.Create(config);
 try
 {
     Console.WriteLine("Fetching Quickstats...");
-    var quickstats = clickBankService.Quickstats.GetQuickstatAccountsAsync().Result;
+    var quickstats = await clickBankService.Quickstats.GetQuickstatAccountsAsync();
 
     if (quickstats?.AccountData != null)
     {

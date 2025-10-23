@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Ocelli.OpenClickBank.Handlers;
 
 namespace Ocelli.OpenClickBank;
 
@@ -9,57 +10,45 @@ public static class ConfigureClickBank
     /// </summary>
     public static IServiceCollection AddClickBankServices(this IServiceCollection services)
     {
-        services.AddHttpClient("ClickBankClient")
-            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
-
-        services.AddSingleton<IClickBankServiceFactory, ClickBankServiceFactory>();
-
-        // Optionally, allow injecting ClickBankService directly
-        services.AddTransient<IClickBankService>(sp =>
-        {
-            var factory = sp.GetRequiredService<IClickBankServiceFactory>();
-            var defaultConfig = new OpenClickBankConfig(); // Provide sensible defaults
-            return factory.Create(defaultConfig);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers ClickBank services and allows passing a preconfigured OpenClickBankConfig.
-    /// </summary>
-    public static IServiceCollection AddClickBankServices(this IServiceCollection services, OpenClickBankConfig config)
-    {
-        services.AddClickBankServices(); // Register base services
-
-        // Register ClickBankService with user-provided configuration
-        services.AddTransient<IClickBankService>(sp =>
-        {
-            var factory = sp.GetRequiredService<IClickBankServiceFactory>();
-            return factory.Create(config);
-        });
+        services.AddClickBankServiceInternal();
 
         return services;
     }
 
     public static IServiceCollection AddClickBankServices(this IServiceCollection services, Action<ClickbankBuilder>? configure = null)
     {
-        services.AddClickBankServices();
-
         var builder = new ClickbankBuilder();
         configure?.Invoke(builder);
-        services.AddSingleton(builder);
+
+        services.AddClickBankServiceInternal(builder: builder);
 
         return services;
     }
 
-    public static IServiceCollection AddClickBankServices(this IServiceCollection services, OpenClickBankConfig config, Action<ClickbankBuilder>? configure = null)
+    private static IServiceCollection AddClickBankServiceInternal(this IServiceCollection services, ClickbankBuilder? builder = null)
     {
-        services.AddClickBankServices(config);
+        services.AddTransient(sp =>
+        {
+            var buider = sp.GetService<ClickbankBuilder>();
+            builder ??= new();
+            return new ClickbankDelegateHandler(sp, builder);
+        });
 
-        var builder = new ClickbankBuilder();
-        configure?.Invoke(builder);
-        services.AddSingleton(builder);
+        services.AddHttpClient("ClickBankClient")
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30))
+            .AddHttpMessageHandler<ClickbankDelegateHandler>();
+
+        services.AddSingleton<IClickBankServiceFactory, ClickBankServiceFactory>();
+
+        // Optionally, allow injecting ClickBankService directly
+        services.AddTransient(sp =>
+        {
+            var factory = sp.GetRequiredService<IClickBankServiceFactory>();
+            var defaultConfig = new OpenClickBankConfig(); // Provide sensible defaults
+            return factory.Create(defaultConfig);
+        });
+
+        if (builder is not null) services.AddSingleton(builder);
 
         return services;
     }

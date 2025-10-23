@@ -1,31 +1,46 @@
-﻿
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Ocelli.OpenClickBank.Handlers;
+
 internal class ClickbankDelegateHandler(IServiceProvider sp, ClickbankBuilder builder) : DelegatingHandler
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        var path = request.RequestUri?.AbsolutePath ?? "/";
+        var method = request.Method.Method;
+
+        // Request hook
+        var reqHandler = builder.Requests.Resolve(method, path);
+        if (reqHandler is not null)
+        {
+            try { await reqHandler(sp, request, cancellationToken).ConfigureAwait(false); }
+            catch (Exception ex)
+            {
+                var maybe = sp.GetService(typeof(ILoggerFactory));
+                if (maybe is ILoggerFactory factory)
+                {
+                    var logger = factory.CreateLogger("Ocelli.OpenClickBank.RequestHandler");
+                    logger.LogWarning(ex, "Request hook failed for {Method} {Path}", method, path);
+                }
+            }
+        }
+
+        // Make the call
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        try
+        // Response hook
+        var resHandler = builder.Responses.Resolve(method, path);
+        if (resHandler is not null)
         {
-            var task = request.RequestUri?.AbsolutePath switch
+            try { await resHandler(sp, response, cancellationToken).ConfigureAwait(false); }
+            catch (Exception ex)
             {
-                "/orders2/list" when builder.ProcessOrderResponse is not null => builder.ProcessOrderResponse(sp, response, cancellationToken),
-
-                _ => Task.CompletedTask,
-            };
-
-            await task.ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            var maybe = sp.GetService(typeof(ILoggerFactory));
-            if (maybe != null && maybe is ILoggerFactory factory)
-            {
-                var logger = factory.CreateLogger(nameof(ClickbankDelegateHandler));
-                logger.LogWarning(ex, "Clickbank response hook failed for {RequestUri}", request.RequestUri);
+                var maybe = sp.GetService(typeof(ILoggerFactory));
+                if (maybe is ILoggerFactory factory)
+                {
+                    var logger = factory.CreateLogger("Ocelli.OpenClickBank.ResponseHandler");
+                    logger.LogWarning(ex, "Response hook failed for {Method} {Path}", method, path);
+                }
             }
         }
 
