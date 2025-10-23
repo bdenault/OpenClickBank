@@ -6,41 +6,32 @@ namespace Ocelli.OpenClickBank;
 public static class ConfigureClickBank
 {
     /// <summary>
-    /// Registers ClickBank services, including HttpClientFactory and the ClickBankService factory.
+    /// Registers ClickBank services, including HttpClientFactory and the <see cref="IClickBankServiceFactory"/>.
     /// </summary>
-    public static IServiceCollection AddClickBankServices(this IServiceCollection services)
+    /// <remarks>
+    /// Also allows callers to configure the <see cref="ClickBankBuilder"/> via the <paramref name="configure"/> action.
+    /// </remarks>
+    /// <param name="configure">Configures the <see cref="ClickBankBuilder"/></param>
+    /// <returns>The <see cref="IServiceCollection"/> for chaining calls.</returns>
+    public static IServiceCollection AddClickBankServices(this IServiceCollection services, Action<ClickBankBuilder>? configure = null)
     {
-        services.AddClickBankServiceInternal();
-
-        return services;
-    }
-
-    public static IServiceCollection AddClickBankServices(this IServiceCollection services, Action<ClickbankBuilder>? configure = null)
-    {
-        var builder = new ClickbankBuilder();
-        configure?.Invoke(builder);
-
-        services.AddClickBankServiceInternal(builder: builder);
-
-        return services;
-    }
-
-    private static IServiceCollection AddClickBankServiceInternal(this IServiceCollection services, ClickbankBuilder? builder = null)
-    {
+        // Register the delegate handler for ClickBank API calls
         services.AddTransient(sp =>
         {
-            var buider = sp.GetService<ClickbankBuilder>();
-            builder ??= new();
-            return new ClickbankDelegateHandler(sp, builder);
+            var builder = sp.GetRequiredService<ClickBankBuilder>();
+            return new ClickBankDelegateHandler(sp, builder);
         });
 
+        // Add the actual HTTP client (and factory)
         services.AddHttpClient("ClickBankClient")
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30))
-            .AddHttpMessageHandler<ClickbankDelegateHandler>();
+            .AddHttpMessageHandler<ClickBankDelegateHandler>();
 
+        // Builds the ClickBankService
         services.AddSingleton<IClickBankServiceFactory, ClickBankServiceFactory>();
 
-        // Optionally, allow injecting ClickBankService directly
+        // Registers a default instance of IClickBankService
+        // TODO: Not required/recommended?
         services.AddTransient(sp =>
         {
             var factory = sp.GetRequiredService<IClickBankServiceFactory>();
@@ -48,8 +39,12 @@ public static class ConfigureClickBank
             return factory.Create(defaultConfig);
         });
 
-        if (builder is not null) services.AddSingleton(builder);
+        // Configure the builder
+        var builder = new ClickBankBuilder();
+        configure?.Invoke(builder);
+        services.AddSingleton(builder);
 
+        // For call chaining
         return services;
     }
 }

@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Ocelli.OpenClickBank;
+using Ocelli.OpenClickBank.Extensions;
 
 var serviceProvider = new ServiceCollection()
     .AddLogging()
     .AddClickBankServices(builder => // Register ClickBank Services
     {
-        builder.OnResponse(HttpMethod.Get, "/rest/1.3/quickstats/accounts", async (sp, res, ct) =>
+        builder.OnResponse(ClickBankOperation.GetQuickstatsForAccount, async (sp, res, ct) =>
         {
             var content = await res.Content.ReadAsStringAsync(ct);
             Console.WriteLine($"  Received response: {content}");
